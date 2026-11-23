@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 30, 41, 59;
+  --background-rgb: 255, 253, 247;
+}
+
+/* Mobile-first touch improvements & safe area support */
+html {
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: env(safe-area-inset-top);
+  font-family: var(--font-nunito), system-ui, sans-serif;
+}
+
+/* Headings default to rounded Fredoka font */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-fredoka), var(--font-nunito), system-ui, sans-serif;
+}
+
+/* Touch friendly minimum sizing */
+button,
+a,
+input,
+select {
+  touch-action: manipulation;
+}
+
+/* Joyful 3D Tactile Buttons (Inspired by Duolingo / Khan Academy Kids) */
+@layer components {
+  .btn-3d-sky {
+    @apply inline-flex items-center justify-center rounded-2xl bg-sky-500 text-white font-display font-bold border-b-4 border-sky-700 hover:bg-sky-400 active:border-b-0 active:translate-y-1 transition-all shadow-md;
+  }
+  .btn-3d-amber {
+    @apply inline-flex items-center justify-center rounded-2xl bg-amber-400 text-amber-950 font-display font-bold border-b-4 border-amber-600 hover:bg-amber-300 active:border-b-0 active:translate-y-1 transition-all shadow-md;
+  }
+  .btn-3d-green {
+    @apply inline-flex items-center justify-center rounded-2xl bg-emerald-500 text-white font-display font-bold border-b-4 border-emerald-700 hover:bg-emerald-400 active:border-b-0 active:translate-y-1 transition-all shadow-md;
+  }
+  .btn-3d-purple {
+    @apply inline-flex items-center justify-center rounded-2xl bg-purple-500 text-white font-display font-bold border-b-4 border-purple-700 hover:bg-purple-400 active:border-b-0 active:translate-y-1 transition-all shadow-md;
+  }
+  .btn-3d-orange {
+    @apply inline-flex items-center justify-center rounded-2xl bg-orange-500 text-white font-display font-bold border-b-4 border-orange-700 hover:bg-orange-400 active:border-b-0 active:translate-y-1 transition-all shadow-md;
+  }
+}

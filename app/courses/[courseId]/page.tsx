@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { getDemoUser, getDemoEnrollments } from '@/lib/auth/demo';
 import { CourseDetailView } from '@/components/courses/CourseDetailView';
 import { StudentNavbar } from '@/components/common/StudentNavbar';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
@@ -20,30 +22,39 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
   let userProfile: Profile | null = null;
   let existingEnrollment: Enrollment | null = null;
 
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      userProfile = profile as Profile | null;
-
-      const { data: enrollment } = await supabase
-        .from('enrollments')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('course_id', courseId)
-        .maybeSingle();
-      existingEnrollment = enrollment as Enrollment | null;
+  if (isPlaceholderConfig()) {
+    userProfile = await getDemoUser();
+    const demoEnrollments = await getDemoEnrollments();
+    const match = demoEnrollments.find((e) => e.course_id === courseId);
+    if (match) {
+      existingEnrollment = match as unknown as Enrollment;
     }
-  } catch (err) {
-    // Graceful fallback for local preview
+  } else {
+    try {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        userProfile = profile as Profile | null;
+
+        const { data: enrollment } = await supabase
+          .from('enrollments')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('course_id', courseId)
+          .maybeSingle();
+        existingEnrollment = enrollment as Enrollment | null;
+      }
+    } catch (err) {
+      // Graceful fallback for local preview
+    }
   }
 
   let course: Course | null = null;

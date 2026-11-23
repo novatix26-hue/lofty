@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
 import { getNextKarachiMidnight, isLessonUnlocked } from '@/lib/learning/drip';
 import { revalidatePath } from 'next/cache';
 
@@ -11,6 +12,13 @@ import { revalidatePath } from 'next/cache';
  */
 export async function markVideoWatched(lessonId: string) {
   try {
+    if (isPlaceholderConfig() || lessonId.includes('demo')) {
+      return {
+        success: true,
+        quizUnlocked: true,
+        videoWatched: true,
+      };
+    }
     const supabase = await createClient();
     const {
       data: { user },
@@ -100,6 +108,18 @@ export async function submitQuiz(
   answers: Record<string, string>
 ): Promise<QuizSubmissionResponse> {
   try {
+    if (isPlaceholderConfig() || lessonId.includes('demo')) {
+      const tomorrowMidnight = getNextKarachiMidnight();
+      return {
+        success: true,
+        passed: true,
+        score: 100,
+        correctCount: 2,
+        totalQuestions: 2,
+        nextLessonDay: 2,
+        nextLessonUnlockAt: tomorrowMidnight.toISOString(),
+      };
+    }
     const supabase = await createClient();
     const {
       data: { user },

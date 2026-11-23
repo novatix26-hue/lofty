@@ -2,12 +2,27 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import {
+  getDemoUser,
+  getDemoEnrollments,
+  saveDemoEnrollments,
+  type DemoEnrollmentItem,
+} from '@/lib/auth/demo';
 import { revalidatePath } from 'next/cache';
 
 /**
  * Helper to ensure the current authenticated user is an admin.
  */
 async function assertAdmin() {
+  if (isPlaceholderConfig()) {
+    const demoUser = await getDemoUser();
+    if (!demoUser || demoUser.role !== 'admin') {
+      throw new Error('Forbidden: Admin access required');
+    }
+    return { user: { id: demoUser.id, email: demoUser.email }, profile: demoUser };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -33,15 +48,77 @@ async function assertAdmin() {
 
 /**
  * Student submits course enrollment with receipt image and transaction ID.
- * Enforces business rules:
- * - Prevents duplicate submissions if already 'active' or 'pending'.
- * - If previously 'rejected', resets status to 'pending' with new receipt & transaction ID.
  */
 export async function submitEnrollment(
   courseId: string,
   receiptUrl: string,
   transactionId: string
 ) {
+  if (isPlaceholderConfig()) {
+    const demoUser = await getDemoUser();
+    if (!demoUser) {
+      return { success: false, error: 'Please log in to enroll in this course' };
+    }
+
+    if (!receiptUrl?.trim()) {
+      return { success: false, error: 'Payment receipt image is required' };
+    }
+
+    if (!transactionId?.trim()) {
+      return { success: false, error: 'Transaction ID is required' };
+    }
+
+    const currentEnrollments = await getDemoEnrollments();
+    const existing = currentEnrollments.find((e) => e.course_id === courseId);
+
+    if (existing) {
+      if (existing.status === 'active') {
+        return {
+          success: false,
+          error:
+            'You are already actively enrolled in this course. You can access your lessons from the Dashboard.',
+        };
+      }
+      if (existing.status === 'pending') {
+        return {
+          success: false,
+          error:
+            'Your fee payment is currently pending admin verification. Please allow a few hours for review.',
+        };
+      }
+      existing.status = 'pending';
+      existing.receipt_url = receiptUrl.trim();
+      existing.transaction_id = transactionId.trim();
+      existing.admin_notes = null;
+      await saveDemoEnrollments(currentEnrollments);
+      revalidatePath(`/courses/${courseId}`);
+      revalidatePath('/dashboard');
+      revalidatePath('/admin/enrollments');
+      return { success: true, enrollment: existing, resubmitted: true };
+    }
+
+    const newEnr: DemoEnrollmentItem = {
+      id: `demo-enr-${Date.now()}`,
+      user_id: demoUser.id,
+      course_id: courseId,
+      status: 'pending',
+      receipt_url: receiptUrl.trim(),
+      transaction_id: transactionId.trim(),
+      admin_notes: null,
+      reviewed_at: null,
+      approved_at: null,
+      created_at: new Date().toISOString(),
+    };
+
+    currentEnrollments.unshift(newEnr);
+    await saveDemoEnrollments(currentEnrollments);
+
+    revalidatePath(`/courses/${courseId}`);
+    revalidatePath('/dashboard');
+    revalidatePath('/admin/enrollments');
+    return { success: true, enrollment: newEnr };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -73,14 +150,16 @@ export async function submitEnrollment(
     if (existing.status === 'active') {
       return {
         success: false,
-        error: 'You are already actively enrolled in this course. You can access your lessons from the Dashboard.',
+        error:
+          'You are already actively enrolled in this course. You can access your lessons from the Dashboard.',
       };
     }
 
     if (existing.status === 'pending') {
       return {
         success: false,
-        error: 'Your fee payment is currently pending admin verification. Please allow a few hours for review.',
+        error:
+          'Your fee payment is currently pending admin verification. Please allow a few hours for review.',
       };
     }
 
@@ -92,7 +171,7 @@ export async function submitEnrollment(
           receipt_url: receiptUrl.trim(),
           transaction_id: transactionId.trim(),
           status: 'pending',
-          admin_notes: null, // Clear old rejection note
+          admin_notes: null,
           reviewed_by: null,
           reviewed_at: null,
           updated_at: new Date().toISOString(),
@@ -142,6 +221,20 @@ export async function submitEnrollment(
  */
 export async function approveEnrollment(enrollmentId: string) {
   try {
+    if (isPlaceholderConfig()) {
+      const enrollments = await getDemoEnrollments();
+      const match = enrollments.find((e) => e.id === enrollmentId);
+      if (match) {
+        match.status = 'active';
+        match.approved_at = new Date().toISOString();
+        await saveDemoEnrollments(enrollments);
+      }
+      revalidatePath('/admin/enrollments');
+      revalidatePath('/admin');
+      revalidatePath('/dashboard');
+      return { success: true, enrollment: match };
+    }
+
     const { user } = await assertAdmin();
     const admin = createAdminClient();
 
@@ -211,11 +304,24 @@ export async function approveEnrollment(enrollmentId: string) {
 }
 
 /**
- * Admin rejects enrollment:
- * Updates status to 'rejected' with optional reason/admin notes
+ * Admin rejects enrollment
  */
 export async function rejectEnrollment(enrollmentId: string, reason?: string) {
   try {
+    if (isPlaceholderConfig()) {
+      const enrollments = await getDemoEnrollments();
+      const match = enrollments.find((e) => e.id === enrollmentId);
+      if (match) {
+        match.status = 'rejected';
+        match.admin_notes = reason?.trim() || 'Payment verification failed';
+        await saveDemoEnrollments(enrollments);
+      }
+      revalidatePath('/admin/enrollments');
+      revalidatePath('/admin');
+      revalidatePath('/dashboard');
+      return { success: true, enrollment: match };
+    }
+
     const { user } = await assertAdmin();
     const admin = createAdminClient();
     const nowIso = new Date().toISOString();

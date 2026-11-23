@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { getDemoUser } from '@/lib/auth/demo';
 import { CourseCatalog, type CatalogCourse } from '@/components/courses/CourseCatalog';
 import { StudentNavbar } from '@/components/common/StudentNavbar';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
@@ -12,39 +14,44 @@ export default async function CoursesPage() {
   let userProfile: Profile | null = null;
   let coursesList: CatalogCourse[] = [];
 
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  if (isPlaceholderConfig()) {
+    userProfile = await getDemoUser();
+    coursesList = DEMO_PREVIEW_COURSES;
+  } else {
+    try {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      userProfile = profile as Profile | null;
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        userProfile = profile as Profile | null;
+      }
+    } catch (err) {
+      // Graceful fallback
     }
-  } catch (err) {
-    // Graceful fallback
-  }
 
-  try {
-    const admin = createAdminClient();
-    const { data: courses, error } = await admin
-      .from('courses')
-      .select('*, lessons(count)')
-      .eq('is_published', true)
-      .order('created_at', { ascending: false });
+    try {
+      const admin = createAdminClient();
+      const { data: courses, error } = await admin
+        .from('courses')
+        .select('*, lessons(count)')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false });
 
-    if (!error && courses && courses.length > 0) {
-      coursesList = courses as CatalogCourse[];
-    } else {
+      if (!error && courses && courses.length > 0) {
+        coursesList = courses as CatalogCourse[];
+      } else {
+        coursesList = DEMO_PREVIEW_COURSES;
+      }
+    } catch (err) {
       coursesList = DEMO_PREVIEW_COURSES;
     }
-  } catch (err) {
-    coursesList = DEMO_PREVIEW_COURSES;
   }
 
   return (

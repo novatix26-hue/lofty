@@ -1,9 +1,42 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { getDemoEnrollments } from '@/lib/auth/demo';
 import { FeeApprovalQueue, type EnrollmentRecord } from '@/components/admin/FeeApprovalQueue';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminEnrollmentsPage() {
+  if (isPlaceholderConfig()) {
+    const demoEnrollments = await getDemoEnrollments();
+    const formatted: EnrollmentRecord[] = demoEnrollments.map((e) => ({
+      id: e.id,
+      user_id: e.user_id,
+      course_id: e.course_id,
+      status: e.status,
+      receipt_url: e.receipt_url,
+      transaction_id: e.transaction_id,
+      admin_notes: e.admin_notes,
+      reviewed_at: e.reviewed_at,
+      approved_at: e.approved_at,
+      created_at: e.created_at,
+      profiles: {
+        id: e.user_id,
+        full_name: 'Student Demo User',
+        email: 'student@example.com',
+        avatar_url: null,
+      },
+      courses: e.courses || {
+        id: e.course_id,
+        title: 'Demo Course',
+        category: 'kids',
+        price: 1500,
+        thumbnail_url: null,
+      },
+    }));
+
+    return <FeeApprovalQueue initialEnrollments={formatted} />;
+  }
+
   const admin = createAdminClient();
 
   const { data: enrollments, error } = await admin

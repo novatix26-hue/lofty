@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { getDemoEnrollments } from '@/lib/auth/demo';
+import { DEMO_PREVIEW_COURSES } from '@/lib/demo/courses';
 import {
   Users,
   Receipt,
@@ -15,6 +18,41 @@ import {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
+  if (isPlaceholderConfig()) {
+    const demoEnrollments = await getDemoEnrollments();
+    const pendingApprovalsCount = demoEnrollments.filter((e) => e.status === 'pending').length;
+    const activeEnrollmentsCount = demoEnrollments.filter((e) => e.status === 'active').length;
+    const totalStudentsCount = 12;
+    const kidsCoursesCount = DEMO_PREVIEW_COURSES.filter((c) => c.category === 'kids').length;
+    const adultsCoursesCount = DEMO_PREVIEW_COURSES.filter((c) => c.category === 'adults').length;
+    const totalCourses = kidsCoursesCount + adultsCoursesCount;
+
+    const recentPendingEnrollments = demoEnrollments
+      .filter((e) => e.status === 'pending')
+      .slice(0, 5)
+      .map((e) => ({
+        id: e.id,
+        transaction_id: e.transaction_id,
+        receipt_url: e.receipt_url,
+        created_at: e.created_at,
+        profiles: { full_name: 'Demo Student', email: 'student@example.com' },
+        courses: e.courses || { title: 'Demo Course', category: 'kids', price: 1500 },
+      }));
+
+    const recentCourses = DEMO_PREVIEW_COURSES.slice(0, 4);
+
+    return renderAdminOverview({
+      totalStudentsCount,
+      pendingApprovalsCount,
+      activeEnrollmentsCount,
+      totalCourses,
+      kidsCoursesCount,
+      adultsCoursesCount,
+      recentPendingEnrollments,
+      recentCourses,
+    });
+  }
+
   const admin = createAdminClient();
 
   // 1. Fetch Key Metrics in parallel
@@ -54,6 +92,28 @@ export default async function AdminDashboardPage() {
 
   const totalCourses = (kidsCoursesCount || 0) + (adultsCoursesCount || 0);
 
+  return renderAdminOverview({
+    totalStudentsCount: totalStudentsCount || 0,
+    pendingApprovalsCount: pendingApprovalsCount || 0,
+    activeEnrollmentsCount: activeEnrollmentsCount || 0,
+    totalCourses,
+    kidsCoursesCount: kidsCoursesCount || 0,
+    adultsCoursesCount: adultsCoursesCount || 0,
+    recentPendingEnrollments: recentPendingEnrollments || [],
+    recentCourses: recentCourses || [],
+  });
+}
+
+function renderAdminOverview({
+  totalStudentsCount,
+  pendingApprovalsCount,
+  activeEnrollmentsCount,
+  totalCourses,
+  kidsCoursesCount,
+  adultsCoursesCount,
+  recentPendingEnrollments,
+  recentCourses,
+}: any) {
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}

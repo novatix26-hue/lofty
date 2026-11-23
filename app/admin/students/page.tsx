@@ -1,38 +1,89 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { getDemoUser } from '@/lib/auth/demo';
 import { Users, GraduationCap, Clock, CheckCircle2, Search, Mail } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminStudentsPage() {
-  const admin = createAdminClient();
+  let students: any[] = [];
 
-  // Fetch all students with their enrollments
-  const { data: students, error } = await admin
-    .from('profiles')
-    .select(`
-      id,
-      email,
-      full_name,
-      avatar_url,
-      role,
-      active_session_token,
-      created_at,
-      enrollments (
+  if (isPlaceholderConfig()) {
+    const demoUser = await getDemoUser();
+    students = [
+      {
+        id: demoUser?.id || 'demo-student-1',
+        email: demoUser?.email || 'student@example.com',
+        full_name: demoUser?.full_name || 'Ali Khan (Test Student)',
+        avatar_url: null,
+        role: 'student',
+        active_session_token: 'session-demo-token-12345',
+        created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
+        enrollments: [
+          {
+            id: 'demo-enr-1',
+            course_id: 'demo-kids-1',
+            status: 'active',
+            courses: { title: 'Fun English Phonics & Cartoon Adventures', category: 'kids' },
+          },
+          {
+            id: 'demo-enr-2',
+            course_id: 'demo-adults-1',
+            status: 'pending',
+            courses: { title: 'Modern Full-Stack Web Development', category: 'adults' },
+          },
+        ],
+      },
+      {
+        id: 'demo-student-2',
+        email: 'fatima@example.com',
+        full_name: 'Fatima Ahmed',
+        avatar_url: null,
+        role: 'student',
+        active_session_token: 'session-demo-token-67890',
+        created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
+        enrollments: [
+          {
+            id: 'demo-enr-3',
+            course_id: 'demo-kids-2',
+            status: 'active',
+            courses: { title: 'Little Math Wizards', category: 'kids' },
+          },
+        ],
+      },
+    ];
+  } else {
+    const admin = createAdminClient();
+
+    // Fetch all students with their enrollments
+    const { data, error } = await admin
+      .from('profiles')
+      .select(`
         id,
-        course_id,
-        status,
-        courses (title, category)
-      )
-    `)
-    .eq('role', 'student')
-    .order('created_at', { ascending: false });
+        email,
+        full_name,
+        avatar_url,
+        role,
+        active_session_token,
+        created_at,
+        enrollments (
+          id,
+          course_id,
+          status,
+          courses (title, category)
+        )
+      `)
+      .eq('role', 'student')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-        Failed to load students: {error.message}
-      </div>
-    );
+    if (error) {
+      return (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+          Failed to load students: {error.message}
+        </div>
+      );
+    }
+    students = data || [];
   }
 
   return (

@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { getDemoUser, getDemoEnrollments } from '@/lib/auth/demo';
 import { AdminLayoutShell } from '@/components/admin/AdminLayoutShell';
 
 export const metadata = {
@@ -13,17 +15,44 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // 1. Local Demo Preview Mode
+  if (isPlaceholderConfig()) {
+    const demoUser = await getDemoUser();
+
+    if (!demoUser) {
+      redirect('/login?redirectTo=/admin');
+    }
+
+    if (demoUser.role !== 'admin') {
+      redirect('/dashboard?error=admin_access_required');
+    }
+
+    const demoEnrollments = await getDemoEnrollments();
+    const pendingCount = demoEnrollments.filter((e) => e.status === 'pending').length;
+
+    return (
+      <AdminLayoutShell
+        adminEmail={demoUser.email}
+        adminName={demoUser.full_name || 'Admin'}
+        pendingCount={pendingCount}
+      >
+        {children}
+      </AdminLayoutShell>
+    );
+  }
+
+  // 2. Live Supabase Mode
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 1. Authentication check
+  // Authentication check
   if (!user) {
     redirect('/login?redirectTo=/admin');
   }
 
-  // 2. Strict Role Verification (Server-Side)
+  // Strict Role Verification (Server-Side)
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, full_name, email, role')
@@ -34,7 +63,7 @@ export default async function AdminLayout({
     redirect('/dashboard?error=admin_access_required');
   }
 
-  // 3. Query pending fee approvals count for badge indicators
+  // Query pending fee approvals count for badge indicators
   const admin = createAdminClient();
   const { count: pendingCount } = await admin
     .from('enrollments')

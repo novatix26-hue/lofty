@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { getDemoUser, getDemoEnrollments } from '@/lib/auth/demo';
 import {
   StudentDashboardView,
   type ActiveCourseCardData,
@@ -14,6 +16,78 @@ import type { Profile } from '@/types';
 export const dynamic = 'force-dynamic';
 
 export default async function StudentDashboardPage() {
+  // 1. Local Demo Preview Mode
+  if (isPlaceholderConfig()) {
+    const demoProfile = await getDemoUser();
+
+    if (!demoProfile) {
+      redirect('/login?redirectTo=/dashboard');
+    }
+
+    if (demoProfile.role === 'admin') {
+      redirect('/admin');
+    }
+
+    const demoEnrollments = await getDemoEnrollments();
+
+    const activeCourses: ActiveCourseCardData[] = demoEnrollments
+      .filter((e) => e.status === 'active')
+      .map((e) => ({
+        enrollmentId: e.id,
+        courseId: e.courses?.id || e.course_id,
+        courseTitle: e.courses?.title || 'Interactive Course',
+        courseCategory: e.courses?.category || 'kids',
+        courseThumbnail: e.courses?.thumbnail_url || null,
+        totalLessons: e.courses?.category === 'kids' ? 7 : 14,
+        completedLessons: 1,
+        progressPercentage: e.courses?.category === 'kids' ? 14 : 7,
+        currentDay: 1,
+      }));
+
+    const pendingCourses: PendingCourseCardData[] = demoEnrollments
+      .filter((e) => e.status === 'pending')
+      .map((e) => ({
+        enrollmentId: e.id,
+        courseId: e.courses?.id || e.course_id,
+        courseTitle: e.courses?.title || 'Course',
+        courseCategory: e.courses?.category || 'kids',
+        coursePrice: e.courses?.price || 0,
+        courseThumbnail: e.courses?.thumbnail_url || null,
+        transactionId: e.transaction_id,
+        createdAt: e.created_at,
+      }));
+
+    const rejectedCourses: RejectedCourseCardData[] = demoEnrollments
+      .filter((e) => e.status === 'rejected')
+      .map((e) => ({
+        enrollmentId: e.id,
+        courseId: e.courses?.id || e.course_id,
+        courseTitle: e.courses?.title || 'Course',
+        courseCategory: e.courses?.category || 'kids',
+        coursePrice: e.courses?.price || 0,
+        adminNotes: e.admin_notes,
+        createdAt: e.created_at,
+      }));
+
+    return (
+      <div className="min-h-screen bg-slate-50/50 pb-20 md:pb-12">
+        <StudentNavbar userProfile={demoProfile} />
+
+        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <StudentDashboardView
+            userProfile={demoProfile}
+            activeCourses={activeCourses}
+            pendingCourses={pendingCourses}
+            rejectedCourses={rejectedCourses}
+          />
+        </main>
+
+        <MobileBottomNav userProfile={demoProfile} />
+      </div>
+    );
+  }
+
+  // 2. Live Supabase Mode
   const supabase = await createClient();
   const {
     data: { user },

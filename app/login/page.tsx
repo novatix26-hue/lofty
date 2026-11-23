@@ -167,6 +167,55 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
                 </>
               )}
             </button>
+
+            {/* Quick Demo Test Logins */}
+            <div className="pt-2">
+              <p className="text-[11px] font-bold text-center text-slate-400 uppercase tracking-wider mb-2">
+                ⚡ Quick Local Testing Shortcuts
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('student@example.com');
+                    setPassword('password123');
+                    startTransition(async () => {
+                      const res = await signInAction({
+                        email: 'student@example.com',
+                        password: 'password123',
+                      });
+                      if (res.success && res.redirectTo) {
+                        router.push(res.redirectTo);
+                        router.refresh();
+                      }
+                    });
+                  }}
+                  className="rounded-xl border border-amber-300 bg-amber-50/80 px-2.5 py-2 text-center text-xs font-bold text-amber-900 hover:bg-amber-100 transition-colors"
+                >
+                  🎓 Demo Student
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('admin@example.com');
+                    setPassword('password123');
+                    startTransition(async () => {
+                      const res = await signInAction({
+                        email: 'admin@example.com',
+                        password: 'password123',
+                      });
+                      if (res.success && res.redirectTo) {
+                        router.push(res.redirectTo);
+                        router.refresh();
+                      }
+                    });
+                  }}
+                  className="rounded-xl border border-blue-300 bg-blue-50/80 px-2.5 py-2 text-center text-xs font-bold text-blue-900 hover:bg-blue-100 transition-colors"
+                >
+                  ⚡ Demo Admin
+                </button>
+              </div>
+            </div>
           </form>
 
           {/* Switch to Signup */}

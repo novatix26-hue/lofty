@@ -2,7 +2,7 @@ import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isPlaceholderConfig } from '@/lib/supabase/config';
-import { getDemoUser } from '@/lib/auth/demo';
+import { getDemoUser, getDemoEnrollments } from '@/lib/auth/demo';
 import { DEMO_PREVIEW_COURSES, getDemoLessonsForCourse } from '@/lib/demo/courses';
 import { isLessonUnlocked } from '@/lib/learning/drip';
 import {
@@ -34,8 +34,28 @@ export default async function LearnCoursePage({
   if (isPlaceholderConfig() || courseId.startsWith('demo-')) {
     const demoUser = await getDemoUser();
     if (!demoUser && isPlaceholderConfig()) {
-      // Auto-create demo student or redirect
       redirect(`/login?redirectTo=/learn/${courseId}`);
+    }
+
+    const isAdmin = demoUser?.role === 'admin';
+
+    // Strict access: Only active enrollments or admins
+    if (!isAdmin) {
+      const demoEnrollments = await getDemoEnrollments();
+      const match = demoEnrollments.find((e) => e.course_id === courseId);
+
+      if (!match) {
+        redirect(`/courses/${courseId}?notice=not_enrolled`);
+      }
+      if (match.status === 'pending') {
+        redirect(`/courses/${courseId}?notice=pending_approval`);
+      }
+      if (match.status === 'rejected') {
+        redirect(`/courses/${courseId}?notice=rejected`);
+      }
+      if (match.status !== 'active') {
+        redirect(`/courses/${courseId}?notice=pending_approval`);
+      }
     }
 
     const demoCourse =
@@ -67,18 +87,53 @@ export default async function LearnCoursePage({
     redirect(`/login?redirectTo=/learn/${courseId}`);
   }
 
+  // Check user profile role for admin bypass
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .eq('id', user.id)
+    .single();
+
+  const isAdmin = profile?.role === 'admin';
   const admin = createAdminClient();
 
-  // Strict Server-Side Access Control: Check Active Enrollment
-  const { data: enrollment, error: enrollmentError } = await admin
-    .from('enrollments')
-    .select('id, user_id, course_id, status')
-    .eq('user_id', user.id)
-    .eq('course_id', courseId)
-    .maybeSingle();
+  let enrollment: { id: string; user_id: string; course_id: string; status: string } | null = null;
 
-  if (enrollmentError || !enrollment || enrollment.status !== 'active') {
-    redirect(`/courses/${courseId}?notice=enrollment_required`);
+  // Strict Server-Side Access Control: Check Active Enrollment
+  if (!isAdmin) {
+    const { data: userEnrollment } = await admin
+      .from('enrollments')
+      .select('id, user_id, course_id, status')
+      .eq('user_id', user.id)
+      .eq('course_id', courseId)
+      .maybeSingle();
+
+    if (!userEnrollment) {
+      redirect(`/courses/${courseId}?notice=not_enrolled`);
+    }
+
+    if (userEnrollment.status === 'pending') {
+      redirect(`/courses/${courseId}?notice=pending_approval`);
+    }
+
+    if (userEnrollment.status === 'rejected') {
+      redirect(`/courses/${courseId}?notice=rejected`);
+    }
+
+    if (userEnrollment.status !== 'active') {
+      redirect(`/courses/${courseId}?notice=pending_approval`);
+    }
+
+    enrollment = userEnrollment;
+  } else {
+    // Admin user: check if there's an enrollment record, else null
+    const { data: adminEnrollment } = await admin
+      .from('enrollments')
+      .select('id, user_id, course_id, status')
+      .eq('user_id', user.id)
+      .eq('course_id', courseId)
+      .maybeSingle();
+    enrollment = adminEnrollment;
   }
 
   // Fetch Course Details
@@ -107,11 +162,13 @@ export default async function LearnCoursePage({
     );
   }
 
-  // Fetch Student's Lesson Progress records
-  const { data: progressRows } = await admin
-    .from('lesson_progress')
-    .select('*')
-    .eq('enrollment_id', enrollment.id);
+  // Fetch Student's Lesson Progress records (if enrollment exists)
+  const { data: progressRows } = enrollment?.id
+    ? await admin
+        .from('lesson_progress')
+        .select('*')
+        .eq('enrollment_id', enrollment.id)
+    : { data: [] };
 
   const progressMap = new Map<string, any>();
   (progressRows || []).forEach((row) => {
@@ -149,13 +206,14 @@ export default async function LearnCoursePage({
     const quiz = quizMap.get(lesson.id);
 
     const isDay1 = lesson.day_number === 1;
-    const isUnlocked = progress ? progress.is_unlocked : isDay1;
-    const unlockAt =
-      progress?.unlock_at || (isDay1 ? progress?.created_at || new Date().toISOString() : null);
+    const isUnlocked = isAdmin ? true : (progress ? progress.is_unlocked : isDay1);
+    const unlockAt = isAdmin
+      ? new Date().toISOString()
+      : (progress?.unlock_at || (isDay1 ? progress?.created_at || new Date().toISOString() : null));
 
-    const isLockedByTime = !isLessonUnlocked(unlockAt, isUnlocked);
+    const isLockedByTime = isAdmin ? false : !isLessonUnlocked(unlockAt, isUnlocked);
     const isCompleted = progress?.is_completed || false;
-    const videoWatched = progress?.video_watched || progress?.video_completed || false;
+    const videoWatched = isAdmin ? true : (progress?.video_watched || progress?.video_completed || false);
     const quizPassed = progress?.quiz_passed || isCompleted;
 
     const videoUrl = isLockedByTime ? null : lesson.video_url;

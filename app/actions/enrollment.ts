@@ -289,6 +289,7 @@ export async function approveEnrollment(enrollmentId: string) {
           quiz_unlocked: false,
           quiz_passed: false,
           is_completed: false,
+          is_unlocked: true,
           unlock_at: nowIso, // Unlocked immediately
         },
         { onConflict: 'enrollment_id,lesson_id' }

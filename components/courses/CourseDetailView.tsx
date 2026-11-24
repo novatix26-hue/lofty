@@ -21,6 +21,7 @@ import {
   ArrowRight,
   ShieldCheck,
   XCircle,
+  Video,
 } from 'lucide-react';
 import { submitEnrollment } from '@/app/actions/enrollment';
 import { uploadPaymentReceipt } from '@/app/actions/receipt';
@@ -31,6 +32,45 @@ interface CourseDetailViewProps {
   lessons: Lesson[];
   existingEnrollment: Enrollment | null;
   userProfile: Profile | null;
+  notice?: string;
+}
+
+function getIntroVideoEmbed(url?: string | null): { type: 'direct' | 'embed'; src: string } | null {
+  if (!url || !url.trim()) return null;
+  const trimmed = url.trim();
+
+  // YouTube matchers: youtu.be/ID or youtube.com/watch?v=ID or /embed/ID
+  const ytMatch = trimmed.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+  if (ytMatch && ytMatch[1]) {
+    return {
+      type: 'embed',
+      src: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`,
+    };
+  }
+
+  // Vimeo matchers
+  const vimeoMatch = trimmed.match(/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/([^\/]*)\/videos\/|album\/(\d+)\/video\/|)(\d+)(?:$|\/|\?)/);
+  if (vimeoMatch && vimeoMatch[3]) {
+    return {
+      type: 'embed',
+      src: `https://player.vimeo.com/video/${vimeoMatch[3]}`,
+    };
+  }
+
+  // Direct video files
+  const isDirect =
+    trimmed.endsWith('.mp4') ||
+    trimmed.endsWith('.webm') ||
+    trimmed.endsWith('.ogg') ||
+    trimmed.includes('commondatastorage.googleapis.com') ||
+    trimmed.includes('/storage/v1/object/');
+
+  if (isDirect) {
+    return { type: 'direct', src: trimmed };
+  }
+
+  // If already an embed url or standard link
+  return { type: 'embed', src: trimmed };
 }
 
 export function CourseDetailView({
@@ -38,6 +78,7 @@ export function CourseDetailView({
   lessons,
   existingEnrollment: initialEnrollment,
   userProfile,
+  notice,
 }: CourseDetailViewProps) {
   const [enrollment, setEnrollment] = useState<Enrollment | null>(initialEnrollment);
   const [transactionId, setTransactionId] = useState('');
@@ -51,6 +92,7 @@ export function CourseDetailView({
   const isEnrolled = enrollment?.status === 'active';
   const isPendingVerification = enrollment?.status === 'pending';
   const isRejected = enrollment?.status === 'rejected';
+  const introVideo = getIntroVideoEmbed(course.intro_video_url);
 
   // Handle Receipt Upload to private Supabase Storage bucket 'receipts'
   async function handleReceiptUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -182,25 +224,133 @@ export function CourseDetailView({
         </div>
       </div>
 
+      {/* Notice Banner: Pending Admin Approval */}
+      {(notice === 'pending_approval' || (isPendingVerification && notice !== 'not_enrolled')) && (
+        <div className="flex items-start gap-3.5 rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 p-5 sm:p-6 shadow-sm">
+          <Clock className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-amber-950">
+              Your enrollment is pending admin approval
+            </h3>
+            <p className="text-xs sm:text-sm text-amber-800 font-medium leading-relaxed">
+              Your enrollment is pending admin approval. You can watch the intro video until approved.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Notice Banner: Active Enrollment Required */}
+      {notice === 'not_enrolled' && !isEnrolled && !isPendingVerification && (
+        <div className="flex items-start gap-3.5 rounded-3xl border-2 border-sky-300 bg-gradient-to-r from-sky-50 to-blue-50 p-5 sm:p-6 shadow-sm">
+          <AlertCircle className="h-6 w-6 text-sky-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-sky-950">
+              Active Enrollment Required
+            </h3>
+            <p className="text-xs sm:text-sm text-sky-800 font-medium leading-relaxed">
+              Active enrollment is required to access the daily lesson videos. Watch the free intro video below and submit your fee verification to start learning!
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Notice Banner: Rejected Enrollment */}
+      {(notice === 'rejected' || isRejected) && !isPendingVerification && (
+        <div className="flex items-start gap-3.5 rounded-3xl border-2 border-red-300 bg-gradient-to-r from-red-50 to-rose-50 p-5 sm:p-6 shadow-sm">
+          <XCircle className="h-6 w-6 text-red-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-red-950">
+              Payment Verification Declined
+            </h3>
+            <p className="text-xs sm:text-sm text-red-800 font-medium leading-relaxed">
+              Your previous fee verification was declined. You can watch the free intro video below and re-submit a clear payment slip using the form on the right.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Main Grid: Curriculum Outline & Payment Section */}
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
-        {/* Left: Curriculum Syllabus (Titles only, locked content) */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-            <div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900">
-                Course Curriculum & Daily Schedule
-              </h2>
-              <p className="mt-1 text-xs text-slate-500">
-                Lessons unlock one calendar day at a time upon passing each day&apos;s quiz (70%+).
-              </p>
+        {/* Left: Intro Video Preview & Curriculum Syllabus */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Free Intro Video Preview Section (Free for everyone) */}
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-sm space-y-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-xs ${
+                    isKids ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  <PlayCircle className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                      Free Course Intro & Preview
+                    </h3>
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 uppercase tracking-wide">
+                      Free For All
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Watch this free preview video to explore what you will learn in this course.
+                  </p>
+                </div>
+              </div>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-              {lessons.length} Days
-            </span>
+
+            {introVideo ? (
+              <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-inner">
+                {introVideo.type === 'direct' ? (
+                  <video
+                    controls
+                    playsInline
+                    className="h-full w-full object-contain"
+                    src={introVideo.src}
+                  >
+                    Your browser does not support HTML5 video.
+                  </video>
+                ) : (
+                  <iframe
+                    src={introVideo.src}
+                    title="Free Course Intro Video"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="h-full w-full border-0"
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="relative aspect-video w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-6 text-center text-slate-400 space-y-2">
+                <Video className="h-10 w-10 text-slate-300" />
+                <p className="text-xs font-semibold text-slate-600">
+                  Course intro video will be uploaded soon.
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Submit fee verification below to unlock Day 1 daily lessons once approved.
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-3">
+          {/* Curriculum Schedule (Titles only, locked) */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight text-slate-900">
+                  Course Curriculum & Daily Schedule
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Lessons unlock one calendar day at a time upon passing each day&apos;s quiz (70%+).
+                </p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                {lessons.length} Days
+              </span>
+            </div>
+
+            <div className="space-y-3">
             {lessons.length > 0 ? (
               lessons.map((lesson) => (
                 <div
@@ -246,6 +396,7 @@ export function CourseDetailView({
             )}
           </div>
         </div>
+      </div>
 
         {/* Right: Enrollment Status / Fee Payment Box */}
         <div className="space-y-6">
@@ -286,6 +437,9 @@ export function CourseDetailView({
                   <Clock className="h-5 w-5 text-amber-600 shrink-0" />
                   <span>Pending Admin Verification</span>
                 </div>
+                <p className="text-xs text-amber-800 font-semibold leading-relaxed">
+                  Your enrollment is pending admin approval. You can watch the intro video until approved.
+                </p>
                 <p className="text-xs text-amber-700 leading-relaxed">
                   We have received your payment slip for Transaction ID{' '}
                   <code className="font-mono font-bold bg-amber-100 px-1 py-0.5 rounded">

@@ -329,8 +329,18 @@ export function StudentDashboardView({
                 </div>
 
                 <p className="text-xs font-semibold text-amber-900 leading-relaxed">
-                  Day 1 lesson unlocks automatically the moment admin reviews your receipt!
+                  Day 1 lesson unlocks automatically the moment admin reviews your receipt! You can watch the intro video while you wait.
                 </p>
+
+                <div className="pt-2">
+                  <Link
+                    href={`/courses/${item.courseId}`}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-white py-2 text-xs font-bold text-amber-900 shadow-2xs hover:bg-amber-100/60 transition-colors"
+                  >
+                    <PlayCircle className="h-3.5 w-3.5 text-amber-600" />
+                    <span>Watch Free Intro Video</span>
+                  </Link>
+                </div>
               </div>
             ))}
           </div>

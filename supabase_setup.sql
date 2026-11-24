@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.courses (
   description TEXT,
   category course_category NOT NULL,
   thumbnail_url TEXT,
+  intro_video_url TEXT,
   price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
   is_published BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),

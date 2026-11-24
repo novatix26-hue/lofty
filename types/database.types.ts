@@ -68,6 +68,7 @@ export interface Database {
           description: string | null;
           category: CourseCategory;
           thumbnail_url: string | null;
+          intro_video_url: string | null;
           price: number;
           is_published: boolean;
           created_at: string;
@@ -80,6 +81,7 @@ export interface Database {
           description?: string | null;
           category: CourseCategory;
           thumbnail_url?: string | null;
+          intro_video_url?: string | null;
           price?: number;
           is_published?: boolean;
           created_at?: string;
@@ -92,6 +94,7 @@ export interface Database {
           description?: string | null;
           category?: CourseCategory;
           thumbnail_url?: string | null;
+          intro_video_url?: string | null;
           price?: number;
           is_published?: boolean;
           created_at?: string;

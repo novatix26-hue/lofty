@@ -18,6 +18,8 @@ import {
   ArrowRight,
   X,
   Check,
+  PlayCircle,
+  Video,
 } from 'lucide-react';
 import { createCourse, updateCourse, togglePublishCourse, deleteCourse, type CourseInput } from '@/app/actions/courses';
 import { uploadCourseAsset } from '@/app/actions/upload';
@@ -44,6 +46,7 @@ export function CourseManager({ initialCourses }: CourseManagerProps) {
     category: 'kids',
     price: 0,
     thumbnail_url: '',
+    intro_video_url: '',
     is_published: true,
   });
 
@@ -58,6 +61,7 @@ export function CourseManager({ initialCourses }: CourseManagerProps) {
       category: 'kids',
       price: 5000,
       thumbnail_url: '',
+      intro_video_url: '',
       is_published: true,
     });
     setFormError(null);
@@ -73,6 +77,7 @@ export function CourseManager({ initialCourses }: CourseManagerProps) {
       category: course.category,
       price: Number(course.price),
       thumbnail_url: course.thumbnail_url || '',
+      intro_video_url: (course as any).intro_video_url || '',
       is_published: course.is_published,
     });
     setFormError(null);
@@ -338,6 +343,13 @@ export function CourseManager({ initialCourses }: CourseManagerProps) {
                     PKR {Number(course.price).toLocaleString()}
                   </span>
                 </div>
+
+                {course.intro_video_url && (
+                  <div className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+                    <PlayCircle className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                    <span className="truncate">Free Intro Video Enabled</span>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -546,6 +558,33 @@ export function CourseManager({ initialCourses }: CourseManagerProps) {
                     />
                   </div>
                 )}
+              </div>
+
+              {/* Intro / Preview Video URL (Free for all) */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Intro / Preview Video URL (Free for all)
+                  </label>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    Free for Everyone
+                  </span>
+                </div>
+                <div className="relative mt-1.5">
+                  <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <Video className="h-4 w-4" />
+                  </div>
+                  <input
+                    type="url"
+                    value={formData.intro_video_url || ''}
+                    onChange={(e) => setFormData({ ...formData, intro_video_url: e.target.value })}
+                    placeholder="https://... (Direct MP4, YouTube, or Vimeo preview URL)"
+                    className="w-full rounded-xl border border-slate-200 py-2 pl-10 pr-3.5 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Public free preview video accessible to guests, visitors, and pending students before enrollment approval.
+                </p>
               </div>
 
               {/* Publish Toggle */}

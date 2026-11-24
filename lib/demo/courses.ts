@@ -14,6 +14,8 @@ export const DEMO_PREVIEW_COURSES: CatalogCourse[] = [
     is_published: true,
     thumbnail_url:
       'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&auto=format&fit=crop&q=80',
+    intro_video_url:
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     lessons: [{ count: 7 }],
@@ -29,6 +31,8 @@ export const DEMO_PREVIEW_COURSES: CatalogCourse[] = [
     is_published: true,
     thumbnail_url:
       'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=800&auto=format&fit=crop&q=80',
+    intro_video_url:
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     lessons: [{ count: 10 }],
@@ -44,6 +48,8 @@ export const DEMO_PREVIEW_COURSES: CatalogCourse[] = [
     is_published: true,
     thumbnail_url:
       'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80',
+    intro_video_url:
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     lessons: [{ count: 14 }],
@@ -59,6 +65,8 @@ export const DEMO_PREVIEW_COURSES: CatalogCourse[] = [
     is_published: true,
     thumbnail_url:
       'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80',
+    intro_video_url:
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     lessons: [{ count: 8 }],

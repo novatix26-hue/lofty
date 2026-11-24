@@ -15,10 +15,17 @@ interface CourseDetailPageProps {
   params: Promise<{
     courseId: string;
   }>;
+  searchParams?: Promise<{
+    notice?: string;
+  }>;
 }
 
-export default async function CourseDetailPage({ params }: CourseDetailPageProps) {
+export default async function CourseDetailPage({
+  params,
+  searchParams,
+}: CourseDetailPageProps) {
   const { courseId } = await params;
+  const { notice } = (await searchParams) || {};
   let userProfile: Profile | null = null;
   let existingEnrollment: Enrollment | null = null;
 
@@ -77,7 +84,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
         day_number: 1,
         duration_seconds: 450,
         is_published: true,
-        video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+        video_url: '', // STRICT SECURITY: Never expose lesson video URL on course preview
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
@@ -92,7 +99,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
         day_number: 2,
         duration_seconds: 600,
         is_published: true,
-        video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+        video_url: '', // STRICT SECURITY: Never expose lesson video URL on course preview
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
@@ -108,14 +115,18 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
       course = dbCourse;
 
       if (course) {
+        // STRICT SECURITY: Do NOT select `video_url` from lessons table on public course page
         const { data: dbLessons } = await admin
           .from('lessons')
           .select(
-            'id, course_id, title, description, day_number, duration_seconds, is_published, video_url, created_at, updated_at'
+            'id, course_id, title, description, day_number, duration_seconds, is_published, created_at, updated_at'
           )
           .eq('course_id', courseId)
           .order('day_number', { ascending: true });
-        lessons = (dbLessons as Lesson[]) || [];
+        lessons = ((dbLessons || []) as any[]).map((l) => ({
+          ...l,
+          video_url: '', // Never exposed to client on preview page
+        }));
       }
     } catch (err) {
       // not found
@@ -136,6 +147,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
           lessons={(lessons as Lesson[]) || []}
           existingEnrollment={existingEnrollment}
           userProfile={userProfile}
+          notice={notice}
         />
       </main>
 

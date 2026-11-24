@@ -44,6 +44,7 @@ export interface CourseInput {
   category: CourseCategory;
   price: number;
   thumbnail_url?: string;
+  intro_video_url?: string;
   is_published?: boolean;
 }
 
@@ -63,6 +64,7 @@ export async function createCourse(input: CourseInput) {
         category: input.category,
         price: Number(input.price) || 0,
         thumbnail_url: input.thumbnail_url?.trim() || null,
+        intro_video_url: input.intro_video_url?.trim() || null,
         is_published: input.is_published ?? false,
       })
       .select()
@@ -95,6 +97,7 @@ export async function updateCourse(courseId: string, input: Partial<CourseInput>
     if (input.category !== undefined) updateData.category = input.category;
     if (input.price !== undefined) updateData.price = Number(input.price);
     if (input.thumbnail_url !== undefined) updateData.thumbnail_url = input.thumbnail_url?.trim() || null;
+    if (input.intro_video_url !== undefined) updateData.intro_video_url = input.intro_video_url?.trim() || null;
     if (input.is_published !== undefined) updateData.is_published = input.is_published;
 
     const { data, error } = await admin

@@ -49,19 +49,19 @@ async function assertAdmin() {
 export interface AdmissionInput {
   courseId: string;
   fullName: string;
-  email: string;
+  email?: string;
   guardianName?: string;
   whatsappNumber: string;
-  city: string;
+  city?: string;
   country?: string;
   gender?: string;
   dateOfBirth?: string;
   educationLevel?: string;
-  paymentMethod: string;
-  senderAccountName: string;
-  senderAccountNumber: string;
+  paymentMethod?: string;
+  senderAccountName?: string;
+  senderAccountNumber?: string;
   transactionId: string;
-  amountPaid: number;
+  amountPaid?: number;
   paymentDate?: string;
   receiptUrl: string;
   studentNotes?: string;
@@ -75,25 +75,22 @@ export async function submitAdmissionForm(input: AdmissionInput) {
   try {
     const trimmedCourseId = input.courseId?.trim();
     const trimmedName = input.fullName?.trim();
-    const trimmedEmail = input.email?.trim().toLowerCase();
     const trimmedWhatsapp = input.whatsappNumber?.trim();
-    const trimmedCity = input.city?.trim();
-    const trimmedBank = input.paymentMethod?.trim();
-    const trimmedSenderName = input.senderAccountName?.trim();
-    const trimmedSenderAcc = input.senderAccountNumber?.trim();
     const trimmedTxId = input.transactionId?.trim();
     const trimmedReceipt = input.receiptUrl?.trim();
 
-    if (!trimmedCourseId) return { success: false, error: 'Please select a course' };
-    if (!trimmedName) return { success: false, error: 'Full student name is required' };
-    if (!trimmedEmail) return { success: false, error: 'Email address is required' };
-    if (!trimmedWhatsapp) return { success: false, error: 'WhatsApp / Mobile number is required' };
-    if (!trimmedCity) return { success: false, error: 'City is required' };
-    if (!trimmedBank) return { success: false, error: 'Please select the bank or payment method used' };
-    if (!trimmedSenderName) return { success: false, error: 'Sender Account Title / Name is required' };
-    if (!trimmedSenderAcc) return { success: false, error: 'Sender Account / Phone Number is required' };
-    if (!trimmedTxId) return { success: false, error: 'Transaction ID / Reference Number is required' };
-    if (!trimmedReceipt) return { success: false, error: 'Payment receipt screenshot is required' };
+    if (!trimmedCourseId) return { success: false, error: 'براہ کرم کورس کا انتخاب کریں' };
+    if (!trimmedName) return { success: false, error: 'طالب علم کا نام درج کریں' };
+    if (!trimmedWhatsapp) return { success: false, error: 'واٹس ایپ نمبر درج کریں' };
+    if (!trimmedTxId) return { success: false, error: 'ٹرانزیکشن آئی ڈی درج کریں' };
+    if (!trimmedReceipt) return { success: false, error: 'فیس کی رسید اپلوڈ کریں' };
+
+    const trimmedEmail = input.email?.trim().toLowerCase() || `${trimmedWhatsapp.replace(/\D/g, '') || Date.now()}@lofty.local`;
+    const trimmedCity = input.city?.trim() || 'Pakistan';
+    const trimmedBank = input.paymentMethod?.trim() || 'Bank Transfer';
+    const trimmedSenderName = input.senderAccountName?.trim() || trimmedName;
+    const trimmedSenderAcc = input.senderAccountNumber?.trim() || trimmedWhatsapp;
+
 
     // 1. Placeholder / Local Demo Mode
     if (isPlaceholderConfig()) {

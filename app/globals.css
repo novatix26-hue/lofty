@@ -54,3 +54,46 @@ select {
     @apply inline-flex items-center justify-center rounded-2xl bg-orange-500 text-white font-display font-bold border-b-4 border-orange-700 hover:bg-orange-400 active:border-b-0 active:translate-y-1 transition-all shadow-md;
   }
 }
+
+/* Playful Kid-Friendly Animations */
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(1.5deg);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes bounceSoft {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 4s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+.animate-bounce-soft {
+  animation: bounceSoft 2s ease-in-out infinite;
+}
+

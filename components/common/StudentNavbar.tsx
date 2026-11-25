@@ -68,6 +68,18 @@ export function StudentNavbar({ userProfile }: StudentNavbarProps) {
             Course Catalog
           </Link>
 
+          <Link
+            href="/admission"
+            className={`font-display text-sm font-bold transition-all px-3 py-1.5 rounded-xl flex items-center gap-1.5 ${
+              pathname === '/admission'
+                ? 'text-amber-900 bg-amber-100/80 border border-amber-300'
+                : 'text-amber-700 hover:text-amber-900 hover:bg-amber-50'
+            }`}
+          >
+            <GraduationCap className="h-4 w-4 text-amber-500" />
+            <span>Online Admission</span>
+          </Link>
+
           {userProfile && (
             <>
               <Link

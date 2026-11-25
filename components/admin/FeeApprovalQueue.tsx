@@ -17,6 +17,13 @@ import {
   AlertCircle,
   FileText,
   ExternalLink,
+  User,
+  Phone,
+  MapPin,
+  Building2,
+  CreditCard,
+  Calendar,
+  MessageCircle,
 } from 'lucide-react';
 import { approveEnrollment, rejectEnrollment } from '@/app/actions/enrollment';
 import type { EnrollmentStatus } from '@/types';
@@ -28,6 +35,19 @@ export interface EnrollmentRecord {
   status: EnrollmentStatus;
   receipt_url: string;
   transaction_id: string;
+  guardian_name?: string | null;
+  whatsapp_number?: string | null;
+  city?: string | null;
+  country?: string | null;
+  gender?: string | null;
+  date_of_birth?: string | null;
+  education_level?: string | null;
+  payment_method?: string | null;
+  sender_account_name?: string | null;
+  sender_account_number?: string | null;
+  amount_paid?: number | null;
+  payment_date?: string | null;
+  student_notes?: string | null;
   admin_notes: string | null;
   reviewed_at: string | null;
   approved_at: string | null;
@@ -37,6 +57,7 @@ export interface EnrollmentRecord {
     full_name: string | null;
     email: string;
     avatar_url: string | null;
+    phone?: string | null;
   } | null;
   courses: {
     id: string;
@@ -150,13 +171,21 @@ export function FeeApprovalQueue({ initialEnrollments }: FeeApprovalQueueProps) 
     const studentEmail = enr.profiles?.email?.toLowerCase() || '';
     const courseTitle = enr.courses?.title?.toLowerCase() || '';
     const txId = enr.transaction_id?.toLowerCase() || '';
+    const whatsapp = enr.whatsapp_number?.toLowerCase() || '';
+    const city = enr.city?.toLowerCase() || '';
+    const bank = enr.payment_method?.toLowerCase() || '';
+    const sender = enr.sender_account_name?.toLowerCase() || '';
     const q = searchQuery.toLowerCase();
 
     const matchesSearch =
       studentName.includes(q) ||
       studentEmail.includes(q) ||
       courseTitle.includes(q) ||
-      txId.includes(q);
+      txId.includes(q) ||
+      whatsapp.includes(q) ||
+      city.includes(q) ||
+      bank.includes(q) ||
+      sender.includes(q);
 
     return matchesStatus && matchesSearch;
   });
@@ -263,11 +292,11 @@ export function FeeApprovalQueue({ initialEnrollments }: FeeApprovalQueueProps) 
           <table className="w-full text-left text-xs">
             <thead className="border-b border-slate-200 bg-slate-50/75 text-slate-500">
               <tr>
-                <th className="px-5 py-3.5 font-semibold">Student</th>
+                <th className="px-5 py-3.5 font-semibold">Student & Contact</th>
                 <th className="px-5 py-3.5 font-semibold">Course & Category</th>
-                <th className="px-5 py-3.5 font-semibold">Transaction ID</th>
+                <th className="px-5 py-3.5 font-semibold">Bank & Sender Account</th>
+                <th className="px-5 py-3.5 font-semibold">Transaction ID & Amount</th>
                 <th className="px-5 py-3.5 font-semibold">Receipt</th>
-                <th className="px-5 py-3.5 font-semibold">Submitted Date</th>
                 <th className="px-5 py-3.5 font-semibold">Status</th>
                 <th className="px-5 py-3.5 text-right font-semibold">Actions</th>
               </tr>
@@ -283,15 +312,40 @@ export function FeeApprovalQueue({ initialEnrollments }: FeeApprovalQueueProps) 
 
                   return (
                     <tr key={enr.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* Student Info */}
+                      {/* Student Info & Contact */}
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">
+                        <div className="flex items-start gap-2.5">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-xs font-black text-white shadow-2xs">
                             {studentName.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <p className="font-semibold text-slate-900">{studentName}</p>
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-slate-900">{studentName}</p>
+                            {enr.guardian_name && (
+                              <p className="text-[11px] text-slate-500">
+                                S/O, D/O: <span className="font-semibold text-slate-700">{enr.guardian_name}</span>
+                              </p>
+                            )}
                             <p className="text-[11px] text-slate-500">{studentEmail}</p>
+                            <div className="flex items-center gap-2 pt-0.5">
+                              {enr.whatsapp_number && (
+                                <a
+                                  href={`https://wa.me/${enr.whatsapp_number.replace(/[^0-9]/g, '')}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Chat on WhatsApp"
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded-md border border-emerald-200/60 font-mono"
+                                >
+                                  <Phone className="h-2.5 w-2.5" />
+                                  <span>{enr.whatsapp_number}</span>
+                                </a>
+                              )}
+                              {enr.city && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded-md">
+                                  <MapPin className="h-2.5 w-2.5 text-slate-400" />
+                                  <span>{enr.city}</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -320,31 +374,59 @@ export function FeeApprovalQueue({ initialEnrollments }: FeeApprovalQueueProps) 
                                 </>
                               )}
                             </span>
-                            <span className="text-[11px] text-slate-500">
+                            <span className="text-[11px] font-bold text-slate-700">
                               PKR {Number(enr.courses?.price || 0).toLocaleString()}
                             </span>
                           </div>
                         </div>
                       </td>
 
-                      {/* Transaction ID with Copy */}
+                      {/* Bank & Sender Account */}
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-1.5">
-                          <code className="rounded bg-slate-100 px-2 py-1 font-mono text-[11px] font-bold text-slate-800">
-                            {enr.transaction_id}
-                          </code>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyTxId(enr.transaction_id)}
-                            title="Copy Transaction ID"
-                            className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
-                          >
-                            {copiedTxId === enr.transaction_id ? (
-                              <Check className="h-3 w-3 text-emerald-600" />
-                            ) : (
-                              <Copy className="h-3 w-3" />
-                            )}
-                          </button>
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-900 border border-blue-200/60">
+                            <Building2 className="h-3 w-3 text-blue-700" />
+                            <span>{enr.payment_method || 'Bank Transfer'}</span>
+                          </span>
+                          {enr.sender_account_name && (
+                            <p className="text-[11px] text-slate-700">
+                              Sender: <strong className="text-slate-900">{enr.sender_account_name}</strong>
+                            </p>
+                          )}
+                          {enr.sender_account_number && (
+                            <p className="text-[10px] text-slate-500 font-mono">
+                              Acc: {enr.sender_account_number}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Transaction ID & Amount */}
+                      <td className="px-5 py-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <code className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-black text-slate-900">
+                              {enr.transaction_id}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyTxId(enr.transaction_id)}
+                              title="Copy Transaction ID"
+                              className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                            >
+                              {copiedTxId === enr.transaction_id ? (
+                                <Check className="h-3 w-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-800">
+                            <span>Paid: PKR {Number(enr.amount_paid || enr.courses?.price || 0).toLocaleString()}</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400">
+                            {enr.payment_date || new Date(enr.created_at).toLocaleDateString()}
+                          </p>
                         </div>
                       </td>
 
@@ -353,16 +435,11 @@ export function FeeApprovalQueue({ initialEnrollments }: FeeApprovalQueueProps) 
                         <button
                           type="button"
                           onClick={() => setSelectedReceipt(enr)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
+                          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs"
                         >
                           <Eye className="h-3.5 w-3.5 text-blue-600" />
-                          <span>View</span>
+                          <span>Dossier</span>
                         </button>
-                      </td>
-
-                      {/* Date */}
-                      <td className="px-5 py-4 text-slate-500 whitespace-nowrap" suppressHydrationWarning>
-                        {new Date(enr.created_at).toLocaleDateString()}
                       </td>
 
                       {/* Status */}
@@ -466,128 +543,269 @@ export function FeeApprovalQueue({ initialEnrollments }: FeeApprovalQueueProps) 
         </div>
       </div>
 
-      {/* --- RECEIPT LIGHTBOX / MODAL --- */}
+      {/* --- STUDENT ADMISSION DOSSIER & RECEIPT LIGHTBOX MODAL --- */}
       {selectedReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-md overflow-y-auto">
-          <div className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-3 sm:p-6 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-4xl rounded-3xl bg-white p-5 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Payment Receipt Verification
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[10px] font-black text-sky-800 uppercase tracking-wider">
+                    Admission Application
+                  </span>
+                  <span className="font-mono text-xs font-bold text-slate-400">
+                    ID: {selectedReceipt.id.slice(0, 8)}
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-slate-900 mt-1">
+                  طالب علم کا مکمل داخلہ ریکارڈ اور فیس سلپ (Admission Dossier)
                 </h3>
-                <p className="text-xs text-slate-500">
-                  {selectedReceipt.profiles?.full_name} • {selectedReceipt.courses?.title}
-                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedReceipt(null)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Receipt Image Display */}
-            <div className="relative mt-4 aspect-4/3 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-950 flex items-center justify-center">
-              {selectedReceipt.receipt_url ? (
-                <Image
-                  src={selectedReceipt.receipt_url}
-                  alt="Payment receipt proof"
-                  fill
-                  className="object-contain"
-                />
-              ) : (
-                <div className="text-center text-slate-400">
-                  <FileText className="mx-auto h-12 w-12" />
-                  <p className="mt-2 text-xs">No receipt image attached</p>
-                </div>
-              )}
-            </div>
-
-            {/* Transaction Details Card */}
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1.5 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-500">Transaction ID:</span>
-                <div className="flex items-center gap-1">
-                  <code className="font-mono font-bold text-slate-900">
-                    {selectedReceipt.transaction_id}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyTxId(selectedReceipt.transaction_id)}
-                    className="p-1 text-slate-400 hover:text-slate-700"
+            {/* 2-Column Grid: Left Receipt Image, Right Admission Details */}
+            <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column: Receipt Proof */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span className="flex items-center gap-1.5">
+                    <FileText className="h-4 w-4 text-sky-600" />
+                    <span>فیس رسید کا اسکرین شاٹ (Receipt Proof)</span>
+                  </span>
+                  <a
+                    href={selectedReceipt.receipt_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-sky-600 hover:underline text-[11px]"
                   >
-                    {copiedTxId === selectedReceipt.transaction_id ? (
-                      <Check className="h-3 w-3 text-emerald-600" />
-                    ) : (
-                      <Copy className="h-3 w-3" />
-                    )}
-                  </button>
+                    <span>Full View</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+
+                <div className="relative aspect-4/3 w-full overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-950 flex items-center justify-center shadow-inner">
+                  {selectedReceipt.receipt_url ? (
+                    <Image
+                      src={selectedReceipt.receipt_url}
+                      alt="Payment receipt proof"
+                      fill
+                      className="object-contain"
+                    />
+                  ) : (
+                    <div className="text-center text-slate-400">
+                      <FileText className="mx-auto h-12 w-12" />
+                      <p className="mt-2 text-xs">No receipt image attached</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Quick Transaction Snapshot */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-500">Transaction ID (TRX):</span>
+                    <div className="flex items-center gap-1">
+                      <code className="font-mono font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                        {selectedReceipt.transaction_id}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyTxId(selectedReceipt.transaction_id)}
+                        className="p-1 text-slate-400 hover:text-slate-700"
+                      >
+                        {copiedTxId === selectedReceipt.transaction_id ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-500">Amount Paid:</span>
+                    <span className="font-black text-emerald-700">
+                      PKR {Number(selectedReceipt.amount_paid || selectedReceipt.courses?.price || 0).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-500">Course Fee:</span>
-                <span className="font-bold text-slate-900">
-                  PKR {Number(selectedReceipt.courses?.price || 0).toLocaleString()}
-                </span>
-              </div>
+              {/* Right Column: Full Student Profile & Bank Data */}
+              <div className="space-y-4">
+                {/* 1. Student Personal Profile */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-2.5 text-xs">
+                  <div className="flex items-center gap-2 font-bold text-slate-900 border-b border-slate-200 pb-2">
+                    <User className="h-4 w-4 text-purple-600" />
+                    <span>طالب علم کا ریکارڈ (Student Profile)</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Student Name:</span>
+                      <p className="font-bold text-slate-900">{selectedReceipt.profiles?.full_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Guardian / Father:</span>
+                      <p className="font-bold text-slate-800">{selectedReceipt.guardian_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Email:</span>
+                      <p className="font-semibold text-slate-700 truncate">{selectedReceipt.profiles?.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">WhatsApp / Phone:</span>
+                      {selectedReceipt.whatsapp_number ? (
+                        <a
+                          href={`https://wa.me/${selectedReceipt.whatsapp_number.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono font-bold text-emerald-700 hover:underline flex items-center gap-1"
+                        >
+                          <Phone className="h-2.5 w-2.5" />
+                          <span>{selectedReceipt.whatsapp_number}</span>
+                        </a>
+                      ) : (
+                        <p className="text-slate-600">N/A</p>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">City & Country:</span>
+                      <p className="font-semibold text-slate-800">
+                        {selectedReceipt.city || 'N/A'} ({selectedReceipt.country || 'Pakistan'})
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Gender & Age:</span>
+                      <p className="font-semibold text-slate-800">
+                        {selectedReceipt.gender || 'N/A'} {selectedReceipt.date_of_birth ? `(${selectedReceipt.date_of_birth})` : ''}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Education Level:</span>
+                      <p className="font-semibold text-slate-800">{selectedReceipt.education_level || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
 
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-500">Submission Date:</span>
-                <span className="text-slate-700" suppressHydrationWarning>
-                  {new Date(selectedReceipt.created_at).toLocaleString()}
-                </span>
-              </div>
-            </div>
+                {/* 2. Course & Payment Specifics */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-2.5 text-xs">
+                  <div className="flex items-center gap-2 font-bold text-slate-900 border-b border-slate-200 pb-2">
+                    <Building2 className="h-4 w-4 text-sky-600" />
+                    <span>بینک و فیس کی تفصیلات (Bank & Payment Details)</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Applied Course:</span>
+                      <p className="font-bold text-slate-900">{selectedReceipt.courses?.title}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Bank / Wallet Paid To:</span>
+                      <p className="font-bold text-blue-900">{selectedReceipt.payment_method || 'Meezan Bank'}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Sender Account Name:</span>
+                      <p className="font-bold text-slate-800">{selectedReceipt.sender_account_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Sender Account / No:</span>
+                      <p className="font-mono text-slate-800">{selectedReceipt.sender_account_number || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Payment Date:</span>
+                      <p className="text-slate-800">
+                        {selectedReceipt.payment_date || new Date(selectedReceipt.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Application Date:</span>
+                      <p className="text-slate-800" suppressHydrationWarning>
+                        {new Date(selectedReceipt.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
 
-            {/* Modal Actions */}
-            <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
-              <a
-                href={selectedReceipt.receipt_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline"
-              >
-                <span>Open original image</span>
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
+                  {selectedReceipt.student_notes && (
+                    <div className="pt-2 border-t border-slate-200">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Student Note:</span>
+                      <p className="text-slate-700 italic mt-0.5 bg-white p-2 rounded-lg border border-slate-200">
+                        &quot;{selectedReceipt.student_notes}&quot;
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-              <div className="flex items-center gap-2">
-                {selectedReceipt.status === 'pending' && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => {
-                        setRejectModalItem(selectedReceipt);
-                        setRejectReason('');
-                      }}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
-                    >
-                      Reject
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => handleApprove(selectedReceipt.id)}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                      <span>Approve & Unlock Day 1</span>
-                    </button>
-                  </>
-                )}
-                {selectedReceipt.status !== 'pending' && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedReceipt(null)}
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                  >
-                    Close
-                  </button>
-                )}
+                {/* 3. Action Buttons inside Modal */}
+                <div className="pt-2 flex items-center justify-end gap-2.5">
+                  {selectedReceipt.status === 'pending' && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          setRejectModalItem(selectedReceipt);
+                          setRejectReason('');
+                        }}
+                        className="rounded-2xl border-2 border-red-200 bg-white px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                      >
+                        Reject Application
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          handleApprove(selectedReceipt.id);
+                          setSelectedReceipt((prev) => (prev ? { ...prev, status: 'active' } : null));
+                        }}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 px-5 py-2.5 text-xs font-bold text-white shadow-md transition-transform active:scale-95 disabled:opacity-50"
+                      >
+                        {isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4 stroke-[3]" />
+                        )}
+                        <span>Approve Admission & Unlock Day 1</span>
+                      </button>
+                    </>
+                  )}
+
+                  {selectedReceipt.status === 'active' && (
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3.5 py-1 text-xs font-bold text-emerald-800">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Admission Approved (Day 1 Active)</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedReceipt(null)}
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  )}
+
+                  {selectedReceipt.status === 'rejected' && (
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3.5 py-1 text-xs font-bold text-red-800">
+                        <XCircle className="h-4 w-4" />
+                        <span>Application Rejected</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleApprove(selectedReceipt.id)}
+                        className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+                      >
+                        Reconsider & Approve
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -46,8 +46,260 @@ async function assertAdmin() {
   return { user, profile };
 }
 
+export interface AdmissionInput {
+  courseId: string;
+  fullName: string;
+  email: string;
+  guardianName?: string;
+  whatsappNumber: string;
+  city: string;
+  country?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  educationLevel?: string;
+  paymentMethod: string;
+  senderAccountName: string;
+  senderAccountNumber: string;
+  transactionId: string;
+  amountPaid: number;
+  paymentDate?: string;
+  receiptUrl: string;
+  studentNotes?: string;
+}
+
 /**
- * Student submits course enrollment with receipt image and transaction ID.
+ * Modern Comprehensive Student Admission & Fee Submission.
+ * Captures full student personal profile, institute bank chosen, sender details, and receipt.
+ */
+export async function submitAdmissionForm(input: AdmissionInput) {
+  try {
+    const trimmedCourseId = input.courseId?.trim();
+    const trimmedName = input.fullName?.trim();
+    const trimmedEmail = input.email?.trim().toLowerCase();
+    const trimmedWhatsapp = input.whatsappNumber?.trim();
+    const trimmedCity = input.city?.trim();
+    const trimmedBank = input.paymentMethod?.trim();
+    const trimmedSenderName = input.senderAccountName?.trim();
+    const trimmedSenderAcc = input.senderAccountNumber?.trim();
+    const trimmedTxId = input.transactionId?.trim();
+    const trimmedReceipt = input.receiptUrl?.trim();
+
+    if (!trimmedCourseId) return { success: false, error: 'Please select a course' };
+    if (!trimmedName) return { success: false, error: 'Full student name is required' };
+    if (!trimmedEmail) return { success: false, error: 'Email address is required' };
+    if (!trimmedWhatsapp) return { success: false, error: 'WhatsApp / Mobile number is required' };
+    if (!trimmedCity) return { success: false, error: 'City is required' };
+    if (!trimmedBank) return { success: false, error: 'Please select the bank or payment method used' };
+    if (!trimmedSenderName) return { success: false, error: 'Sender Account Title / Name is required' };
+    if (!trimmedSenderAcc) return { success: false, error: 'Sender Account / Phone Number is required' };
+    if (!trimmedTxId) return { success: false, error: 'Transaction ID / Reference Number is required' };
+    if (!trimmedReceipt) return { success: false, error: 'Payment receipt screenshot is required' };
+
+    // 1. Placeholder / Local Demo Mode
+    if (isPlaceholderConfig()) {
+      let demoUser = await getDemoUser();
+      if (!demoUser) {
+        demoUser = {
+          id: `demo-student-${Date.now().toString().slice(-6)}`,
+          email: trimmedEmail,
+          full_name: trimmedName,
+          phone: trimmedWhatsapp,
+          guardian_name: input.guardianName?.trim() || null,
+          city: trimmedCity,
+          role: 'student',
+          avatar_url: null,
+          active_session_token: null,
+          active_session_id: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+      }
+
+      const currentEnrollments = await getDemoEnrollments();
+      const existing = currentEnrollments.find((e) => e.course_id === trimmedCourseId);
+
+      const admissionRecord: DemoEnrollmentItem = {
+        id: existing?.id || `demo-enr-${Date.now()}`,
+        user_id: demoUser.id,
+        course_id: trimmedCourseId,
+        status: 'pending',
+        receipt_url: trimmedReceipt,
+        transaction_id: trimmedTxId,
+        guardian_name: input.guardianName?.trim() || null,
+        whatsapp_number: trimmedWhatsapp,
+        city: trimmedCity,
+        country: input.country?.trim() || 'Pakistan',
+        gender: input.gender?.trim() || null,
+        date_of_birth: input.dateOfBirth?.trim() || null,
+        education_level: input.educationLevel?.trim() || null,
+        payment_method: trimmedBank,
+        sender_account_name: trimmedSenderName,
+        sender_account_number: trimmedSenderAcc,
+        amount_paid: Number(input.amountPaid) || 0,
+        payment_date: input.paymentDate || new Date().toISOString().split('T')[0],
+        student_notes: input.studentNotes?.trim() || null,
+        admin_notes: null,
+        reviewed_at: null,
+        approved_at: null,
+        created_at: new Date().toISOString(),
+        profiles: {
+          id: demoUser.id,
+          full_name: trimmedName,
+          email: trimmedEmail,
+          avatar_url: null,
+        },
+      };
+
+      if (existing) {
+        const idx = currentEnrollments.findIndex((e) => e.course_id === trimmedCourseId);
+        currentEnrollments[idx] = admissionRecord;
+      } else {
+        currentEnrollments.unshift(admissionRecord);
+      }
+
+      await saveDemoEnrollments(currentEnrollments);
+      revalidatePath(`/courses/${trimmedCourseId}`);
+      revalidatePath('/dashboard');
+      revalidatePath('/admin/enrollments');
+      revalidatePath('/admin');
+
+      return {
+        success: true,
+        enrollmentId: admissionRecord.id,
+        message: 'Admission request and fee details submitted successfully!',
+      };
+    }
+
+    // 2. Live Supabase Mode
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    let targetUserId = user?.id;
+
+    const admin = createAdminClient();
+
+    // If student is not logged in, check if profile exists or create guest student profile
+    if (!targetUserId) {
+      const { data: existingProfile } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('email', trimmedEmail)
+        .maybeSingle();
+
+      if (existingProfile) {
+        targetUserId = existingProfile.id;
+      } else {
+        // Generate anonymous student uuid
+        const newUuid = crypto.randomUUID();
+        const { data: createdProfile, error: profileErr } = await admin
+          .from('profiles')
+          .insert({
+            id: newUuid,
+            email: trimmedEmail,
+            full_name: trimmedName,
+            phone: trimmedWhatsapp,
+            role: 'student',
+          })
+          .select('id')
+          .single();
+
+        if (profileErr) {
+          return { success: false, error: 'Could not create student profile: ' + profileErr.message };
+        }
+        targetUserId = createdProfile.id;
+      }
+    } else {
+      // Update logged-in student profile with their latest contact details
+      await admin
+        .from('profiles')
+        .update({
+          full_name: trimmedName,
+          phone: trimmedWhatsapp,
+          city: trimmedCity,
+        })
+        .eq('id', targetUserId);
+    }
+
+    // Check existing enrollment
+    const { data: existing } = await admin
+      .from('enrollments')
+      .select('id, status')
+      .eq('user_id', targetUserId)
+      .eq('course_id', trimmedCourseId)
+      .maybeSingle();
+
+    const payload = {
+      user_id: targetUserId,
+      course_id: trimmedCourseId,
+      status: 'pending' as const,
+      receipt_url: trimmedReceipt,
+      transaction_id: trimmedTxId,
+      guardian_name: input.guardianName?.trim() || null,
+      whatsapp_number: trimmedWhatsapp,
+      city: trimmedCity,
+      country: input.country?.trim() || 'Pakistan',
+      gender: input.gender?.trim() || null,
+      date_of_birth: input.dateOfBirth?.trim() || null,
+      education_level: input.educationLevel?.trim() || null,
+      payment_method: trimmedBank,
+      sender_account_name: trimmedSenderName,
+      sender_account_number: trimmedSenderAcc,
+      amount_paid: Number(input.amountPaid) || 0,
+      payment_date: input.paymentDate || new Date().toISOString().split('T')[0],
+      student_notes: input.studentNotes?.trim() || null,
+      admin_notes: null,
+      reviewed_by: null,
+      reviewed_at: null,
+      updated_at: new Date().toISOString(),
+    };
+
+    let resultRecord;
+    if (existing) {
+      if (existing.status === 'active') {
+        return {
+          success: false,
+          error: 'You are already actively enrolled in this course. You can access it from your Dashboard.',
+        };
+      }
+      const { data: updated, error: updateErr } = await admin
+        .from('enrollments')
+        .update(payload)
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (updateErr) return { success: false, error: updateErr.message };
+      resultRecord = updated;
+    } else {
+      const { data: inserted, error: insertErr } = await admin
+        .from('enrollments')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (insertErr) return { success: false, error: insertErr.message };
+      resultRecord = inserted;
+    }
+
+    revalidatePath(`/courses/${trimmedCourseId}`);
+    revalidatePath('/dashboard');
+    revalidatePath('/admin/enrollments');
+    revalidatePath('/admin');
+
+    return {
+      success: true,
+      enrollmentId: resultRecord.id,
+      message: 'Admission form & fee details submitted successfully!',
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to submit admission form' };
+  }
+}
+
+/**
+ * Student submits course enrollment with receipt image and transaction ID (Backward-compatible).
  */
 export async function submitEnrollment(
   courseId: string,

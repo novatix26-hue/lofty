@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, LayoutDashboard, Shield, LogOut, User, Award } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Shield, LogOut, User, Award, GraduationCap } from 'lucide-react';
 import { signOutAction } from '@/app/actions/auth';
 import type { Profile } from '@/types';
 
@@ -32,6 +32,16 @@ export function MobileBottomNav({ userProfile }: MobileBottomNavProps) {
       >
         <BookOpen className="h-5 w-5 stroke-[2.2]" />
         <span>Browse</span>
+      </Link>
+
+      <Link
+        href="/admission"
+        className={`flex flex-col items-center gap-1 py-1 text-xs font-display font-bold transition-all ${
+          pathname === '/admission' ? 'text-amber-600 scale-105' : 'text-slate-500 hover:text-amber-700'
+        }`}
+      >
+        <GraduationCap className="h-5 w-5 text-amber-500 stroke-[2.2]" />
+        <span>Admission</span>
       </Link>
 
       {userProfile ? (

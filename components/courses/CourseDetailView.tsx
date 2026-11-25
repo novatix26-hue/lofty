@@ -22,8 +22,9 @@ import {
   ShieldCheck,
   XCircle,
   Video,
+  GraduationCap,
 } from 'lucide-react';
-import { submitEnrollment } from '@/app/actions/enrollment';
+import { submitEnrollment, submitAdmissionForm } from '@/app/actions/enrollment';
 import { uploadPaymentReceipt } from '@/app/actions/receipt';
 import type { Course, Lesson, Enrollment, Profile } from '@/types';
 
@@ -81,6 +82,9 @@ export function CourseDetailView({
   notice,
 }: CourseDetailViewProps) {
   const [enrollment, setEnrollment] = useState<Enrollment | null>(initialEnrollment);
+  const [paymentMethod, setPaymentMethod] = useState('Meezan Bank');
+  const [senderAccountName, setSenderAccountName] = useState('');
+  const [senderAccountNumber, setSenderAccountNumber] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [receiptUrl, setReceiptUrl] = useState('');
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
@@ -137,13 +141,33 @@ export function CourseDetailView({
     }
 
     startTransition(async () => {
-      const res = await submitEnrollment(course.id, receiptUrl, transactionId);
-      if (res.success && res.enrollment) {
-        setEnrollment(res.enrollment as Enrollment);
+      const res = await submitAdmissionForm({
+        courseId: course.id,
+        fullName: userProfile.full_name || 'Student',
+        email: userProfile.email,
+        whatsappNumber: userProfile.phone || '0300-1234567',
+        city: 'Pakistan',
+        paymentMethod,
+        senderAccountName: senderAccountName.trim() || userProfile.full_name || 'Student Account',
+        senderAccountNumber: senderAccountNumber.trim() || 'Direct Transfer',
+        transactionId: transactionId.trim(),
+        amountPaid: Number(course.price),
+        receiptUrl: receiptUrl.trim(),
+      });
+
+      if (res.success) {
+        setEnrollment({
+          id: res.enrollmentId || `enr-${Date.now()}`,
+          user_id: userProfile.id,
+          course_id: course.id,
+          status: 'pending',
+          receipt_url: receiptUrl.trim(),
+          transaction_id: transactionId.trim(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as any);
         setSuccessMessage(
-          res.resubmitted
-            ? 'Your new payment receipt has been submitted! Our admin team will verify it shortly.'
-            : 'Payment receipt submitted successfully! Day 1 will unlock immediately once approved.'
+          'Your admission and payment receipt have been submitted! Day 1 will unlock immediately once approved by Admin.'
         );
       } else {
         setFormError(res.error || 'Failed to submit enrollment.');
@@ -478,6 +502,23 @@ export function CourseDetailView({
             {/* Condition 4: Not Enrolled or Rejected (Show Payment Instructions & Form) */}
             {(!enrollment || isRejected) && (
               <div className="space-y-5">
+                {/* 1-Click Open Full Modern Admission Form Banner */}
+                <div className="rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 p-4 text-white shadow-md text-center space-y-2">
+                  <div className="flex items-center justify-center gap-1.5 font-display font-black text-sm">
+                    <GraduationCap className="h-5 w-5" />
+                    <span>مکمل آن لائن داخلہ فارم فل کریں</span>
+                  </div>
+                  <p className="text-[11px] font-semibold text-white/90">
+                    طالب علم کی مکمل معلومات، بینک سلپ اور ٹرانزیکشن کی انٹری کے لیے تفصیلی داخلہ فارم کھولیں:
+                  </p>
+                  <Link
+                    href={`/admission?courseId=${course.id}`}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-xs font-display font-black text-amber-950 shadow-sm hover:bg-amber-50 transition-colors"
+                  >
+                    <span>اوپن داخلہ و فیس ویریفیکیشن فارم &rarr;</span>
+                  </Link>
+                </div>
+
                 {/* Payment Instructions Box */}
                 <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 space-y-3">
                   <div className="flex items-center gap-2 text-xs font-bold text-blue-900">
@@ -539,6 +580,53 @@ export function CourseDetailView({
                       </div>
                     )}
 
+                    {/* Bank Paid To */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700">
+                        Payment Method / Bank Paid To *
+                      </label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="Meezan Bank">Meezan Bank (میزان بینک)</option>
+                        <option value="EasyPaisa">EasyPaisa (ایزی پیسہ)</option>
+                        <option value="JazzCash">JazzCash (جاز کیش)</option>
+                        <option value="HBL">HBL / Other Bank Transfer</option>
+                      </select>
+                    </div>
+
+                    {/* Sender Account Name */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700">
+                        Sender Account Title / Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={senderAccountName}
+                        onChange={(e) => setSenderAccountName(e.target.value)}
+                        placeholder="e.g. Tariq Mehmood"
+                        className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Sender Account Number */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700">
+                        Sender Account / Phone Number *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={senderAccountNumber}
+                        onChange={(e) => setSenderAccountNumber(e.target.value)}
+                        placeholder="e.g. 0300-1234567 or IBAN"
+                        className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+
                     {/* Transaction ID */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700">
@@ -550,7 +638,7 @@ export function CourseDetailView({
                         value={transactionId}
                         onChange={(e) => setTransactionId(e.target.value)}
                         placeholder="e.g. TRX987654321"
-                        className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
 

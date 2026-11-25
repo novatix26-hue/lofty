@@ -591,7 +591,7 @@ export function FeeApprovalQueue({ initialEnrollments }: FeeApprovalQueueProps) 
                   </a>
                 </div>
 
-                <div className="relative aspect-4/3 w-full overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-950 flex items-center justify-center shadow-inner">
+                <div className="relative h-80 sm:h-96 w-full overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-950 flex items-center justify-center shadow-inner">
                   {selectedReceipt.receipt_url ? (
                     <Image
                       src={selectedReceipt.receipt_url}

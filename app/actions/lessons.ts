@@ -2,9 +2,19 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { getDemoUser } from '@/lib/auth/demo';
 import { revalidatePath } from 'next/cache';
 
 async function assertAdmin() {
+  if (isPlaceholderConfig()) {
+    const demoUser = await getDemoUser();
+    if (!demoUser || demoUser.role !== 'admin') {
+      throw new Error('Forbidden: Admin access required');
+    }
+    return { id: demoUser.id, email: demoUser.email };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -40,6 +50,26 @@ export interface LessonInput {
 export async function createLesson(input: LessonInput) {
   try {
     await assertAdmin();
+
+    if (isPlaceholderConfig()) {
+      revalidatePath(`/admin/courses/${input.course_id}`);
+      return {
+        success: true,
+        lesson: {
+          id: `demo-lesson-${Date.now()}`,
+          course_id: input.course_id,
+          title: input.title.trim(),
+          description: input.description?.trim() || null,
+          day_number: Number(input.day_number),
+          video_url: input.video_url.trim(),
+          duration_seconds: Number(input.duration_seconds) || 0,
+          is_published: input.is_published ?? true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as any,
+      };
+    }
+
     const admin = createAdminClient();
 
     // 1. Insert lesson
@@ -86,6 +116,20 @@ export async function updateLesson(
 ) {
   try {
     await assertAdmin();
+
+    if (isPlaceholderConfig()) {
+      revalidatePath(`/admin/courses/${courseId}`);
+      return {
+        success: true,
+        lesson: {
+          id: lessonId,
+          course_id: courseId,
+          ...input,
+          updated_at: new Date().toISOString(),
+        } as any,
+      };
+    }
+
     const admin = createAdminClient();
 
     const updateData: any = {
@@ -120,6 +164,12 @@ export async function updateLesson(
 export async function deleteLesson(lessonId: string, courseId: string) {
   try {
     await assertAdmin();
+
+    if (isPlaceholderConfig()) {
+      revalidatePath(`/admin/courses/${courseId}`);
+      return { success: true };
+    }
+
     const admin = createAdminClient();
 
     const { error } = await admin.from('lessons').delete().eq('id', lessonId);
@@ -141,6 +191,12 @@ export async function reorderLessons(
 ) {
   try {
     await assertAdmin();
+
+    if (isPlaceholderConfig()) {
+      revalidatePath(`/admin/courses/${courseId}`);
+      return { success: true };
+    }
+
     const admin = createAdminClient();
 
     for (const item of items) {

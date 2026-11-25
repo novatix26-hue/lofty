@@ -1,24 +1,47 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { DEMO_PREVIEW_COURSES } from '@/lib/demo/courses';
 import { CourseManager } from '@/components/admin/CourseManager';
 import type { Course } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
+function getDemoFormattedCourses(): Course[] {
+  return DEMO_PREVIEW_COURSES.map((c) => ({
+    id: c.id,
+    title: c.title,
+    slug: c.slug,
+    description: c.description,
+    category: c.category,
+    price: c.price,
+    is_published: c.is_published,
+    thumbnail_url: c.thumbnail_url,
+    intro_video_url: c.intro_video_url || null,
+    created_at: c.created_at,
+    updated_at: c.updated_at,
+  }));
+}
+
 export default async function AdminCoursesPage() {
-  const admin = createAdminClient();
-
-  const { data: courses, error } = await admin
-    .from('courses')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-        Failed to load courses: {error.message}
-      </div>
-    );
+  if (isPlaceholderConfig()) {
+    return <CourseManager initialCourses={getDemoFormattedCourses()} />;
   }
 
-  return <CourseManager initialCourses={(courses as Course[]) || []} />;
+  try {
+    const admin = createAdminClient();
+
+    const { data: courses, error } = await admin
+      .from('courses')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error || !courses) {
+      return <CourseManager initialCourses={getDemoFormattedCourses()} />;
+    }
+
+    return <CourseManager initialCourses={(courses as Course[]) || []} />;
+  } catch {
+    return <CourseManager initialCourses={getDemoFormattedCourses()} />;
+  }
 }
+

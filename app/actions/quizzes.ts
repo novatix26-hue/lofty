@@ -2,10 +2,20 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { getDemoUser } from '@/lib/auth/demo';
 import { revalidatePath } from 'next/cache';
 import type { QuizOption } from '@/types';
 
 async function assertAdmin() {
+  if (isPlaceholderConfig()) {
+    const demoUser = await getDemoUser();
+    if (!demoUser || demoUser.role !== 'admin') {
+      throw new Error('Forbidden: Admin access required');
+    }
+    return { id: demoUser.id, email: demoUser.email };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -44,6 +54,21 @@ export interface QuestionInput {
 export async function getOrCreateQuiz(lessonId: string) {
   try {
     await assertAdmin();
+
+    if (isPlaceholderConfig()) {
+      return {
+        success: true,
+        quiz: {
+          id: `demo-quiz-${lessonId}`,
+          lesson_id: lessonId,
+          title: 'Lesson Quiz',
+          passing_score_percentage: 70.0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as any,
+      };
+    }
+
     const admin = createAdminClient();
 
     // Look for existing quiz
@@ -81,7 +106,6 @@ export async function getOrCreateQuiz(lessonId: string) {
 export async function saveQuizQuestion(input: QuestionInput) {
   try {
     await assertAdmin();
-    const admin = createAdminClient();
 
     if (!input.question_text.trim()) {
       return { success: false, error: 'Question text is required' };
@@ -94,6 +118,30 @@ export async function saveQuizQuestion(input: QuestionInput) {
     if (!input.correct_option_id) {
       return { success: false, error: 'Please mark the correct option' };
     }
+
+    if (isPlaceholderConfig()) {
+      if (input.course_id) {
+        revalidatePath(`/admin/courses/${input.course_id}`);
+      }
+      return {
+        success: true,
+        question: {
+          id: input.id || `demo-q-${Date.now()}`,
+          quiz_id: input.quiz_id,
+          question_text: input.question_text.trim(),
+          audio_url: input.audio_url?.trim() || null,
+          image_url: input.image_url?.trim() || null,
+          options: input.options,
+          correct_option_id: input.correct_option_id,
+          explanation: input.explanation?.trim() || null,
+          order_index: input.order_index || 1,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as any,
+      };
+    }
+
+    const admin = createAdminClient();
 
     const payload: any = {
       quiz_id: input.quiz_id,
@@ -144,6 +192,14 @@ export async function saveQuizQuestion(input: QuestionInput) {
 export async function deleteQuizQuestion(questionId: string, courseId?: string) {
   try {
     await assertAdmin();
+
+    if (isPlaceholderConfig()) {
+      if (courseId) {
+        revalidatePath(`/admin/courses/${courseId}`);
+      }
+      return { success: true };
+    }
+
     const admin = createAdminClient();
 
     const { error } = await admin

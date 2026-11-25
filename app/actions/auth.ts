@@ -28,6 +28,19 @@ export interface SignInInput {
   password: string;
 }
 
+export async function loginAsDemoAdmin() {
+  await createDemoAdmin();
+  return { success: true, redirectTo: '/admin' };
+}
+
+export async function loginAsDemoStudent() {
+  await createDemoStudent({
+    fullName: 'Demo Student',
+    email: 'student@example.com',
+  });
+  return { success: true, redirectTo: '/dashboard' };
+}
+
 export async function signUpAction(input: SignUpInput) {
   try {
     const trimmedEmail = input.email.trim().toLowerCase();

@@ -11,8 +11,10 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowRight,
+  Shield,
+  Sparkles,
 } from 'lucide-react';
-import { signInAction } from '@/app/actions/auth';
+import { signInAction, loginAsDemoAdmin, loginAsDemoStudent } from '@/app/actions/auth';
 
 interface LoginPageProps {
   searchParams: Promise<{
@@ -113,6 +115,43 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
             </div>
           )}
 
+          {/* 1-Click Fast Admin Access */}
+          <div className="mb-6 rounded-2xl border-2 border-indigo-200 bg-gradient-to-r from-indigo-50/90 via-sky-50/70 to-amber-50/80 p-3.5 shadow-xs">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+                  <Shield className="h-5 w-5 text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-900 font-display">
+                    Admin Console Access
+                  </h4>
+                  <p className="text-[11px] font-semibold text-slate-600">
+                    Review receipts, approve enrollments & manage courses.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  startTransition(async () => {
+                    const res = await loginAsDemoAdmin();
+                    if (res?.success && res?.redirectTo) {
+                      const dest = resolvedSearchParams.redirectTo || res.redirectTo;
+                      router.push(dest);
+                      router.refresh();
+                    }
+                  });
+                }}
+                className="shrink-0 rounded-xl bg-slate-900 hover:bg-slate-800 px-3 py-2 text-xs font-bold text-white shadow-sm transition-transform active:scale-95 flex items-center gap-1.5"
+              >
+                <Shield className="h-3.5 w-3.5 text-amber-400" />
+                <span>Admin Login ⚡</span>
+              </button>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4" suppressHydrationWarning>
             {/* Email */}
             <div>
@@ -176,14 +215,12 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
+                  disabled={isPending}
                   onClick={() => {
                     setEmail('student@example.com');
                     setPassword('password123');
                     startTransition(async () => {
-                      const res = await signInAction({
-                        email: 'student@example.com',
-                        password: 'password123',
-                      });
+                      const res = await loginAsDemoStudent();
                       if (res.success && res.redirectTo) {
                         router.push(res.redirectTo);
                         router.refresh();
@@ -196,16 +233,15 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
                 </button>
                 <button
                   type="button"
+                  disabled={isPending}
                   onClick={() => {
-                    setEmail('admin@example.com');
+                    setEmail('admin@lofty.edu');
                     setPassword('password123');
                     startTransition(async () => {
-                      const res = await signInAction({
-                        email: 'admin@example.com',
-                        password: 'password123',
-                      });
+                      const res = await loginAsDemoAdmin();
                       if (res.success && res.redirectTo) {
-                        router.push(res.redirectTo);
+                        const dest = resolvedSearchParams.redirectTo || res.redirectTo;
+                        router.push(dest);
                         router.refresh();
                       }
                     });

@@ -2,10 +2,20 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlaceholderConfig } from '@/lib/supabase/config';
+import { getDemoUser } from '@/lib/auth/demo';
 import { revalidatePath } from 'next/cache';
 import type { CourseCategory } from '@/types';
 
 async function assertAdmin() {
+  if (isPlaceholderConfig()) {
+    const demoUser = await getDemoUser();
+    if (!demoUser || demoUser.role !== 'admin') {
+      throw new Error('Forbidden: Admin access required');
+    }
+    return { id: demoUser.id, email: demoUser.email };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -51,9 +61,31 @@ export interface CourseInput {
 export async function createCourse(input: CourseInput) {
   try {
     await assertAdmin();
-    const admin = createAdminClient();
 
     const slug = input.slug?.trim() || `${generateSlug(input.title)}-${Date.now().toString().slice(-4)}`;
+
+    if (isPlaceholderConfig()) {
+      revalidatePath('/admin/courses');
+      revalidatePath('/admin');
+      return {
+        success: true,
+        course: {
+          id: `demo-${Date.now()}`,
+          title: input.title.trim(),
+          slug,
+          description: input.description?.trim() || null,
+          category: input.category,
+          price: Number(input.price) || 0,
+          thumbnail_url: input.thumbnail_url?.trim() || null,
+          intro_video_url: input.intro_video_url?.trim() || null,
+          is_published: input.is_published ?? false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as any,
+      };
+    }
+
+    const admin = createAdminClient();
 
     const { data, error } = await admin
       .from('courses')
@@ -85,6 +117,21 @@ export async function createCourse(input: CourseInput) {
 export async function updateCourse(courseId: string, input: Partial<CourseInput>) {
   try {
     await assertAdmin();
+
+    if (isPlaceholderConfig()) {
+      revalidatePath('/admin/courses');
+      revalidatePath(`/admin/courses/${courseId}`);
+      revalidatePath('/admin');
+      return {
+        success: true,
+        course: {
+          id: courseId,
+          ...input,
+          updated_at: new Date().toISOString(),
+        } as any,
+      };
+    }
+
     const admin = createAdminClient();
 
     const updateData: any = {
@@ -123,6 +170,14 @@ export async function updateCourse(courseId: string, input: Partial<CourseInput>
 export async function togglePublishCourse(courseId: string, isPublished: boolean) {
   try {
     await assertAdmin();
+
+    if (isPlaceholderConfig()) {
+      revalidatePath('/admin/courses');
+      revalidatePath(`/admin/courses/${courseId}`);
+      revalidatePath('/admin');
+      return { success: true };
+    }
+
     const admin = createAdminClient();
 
     const { data, error } = await admin
@@ -151,6 +206,13 @@ export async function togglePublishCourse(courseId: string, isPublished: boolean
 export async function deleteCourse(courseId: string) {
   try {
     await assertAdmin();
+
+    if (isPlaceholderConfig()) {
+      revalidatePath('/admin/courses');
+      revalidatePath('/admin');
+      return { success: true };
+    }
+
     const admin = createAdminClient();
 
     const { error } = await admin.from('courses').delete().eq('id', courseId);

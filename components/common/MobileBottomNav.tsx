@@ -77,13 +77,22 @@ export function MobileBottomNav({ userProfile }: MobileBottomNavProps) {
           )}
         </>
       ) : (
-        <Link
-          href="/login"
-          className="flex flex-col items-center gap-1 py-1 text-xs font-display font-bold text-slate-500 hover:text-sky-600"
-        >
-          <User className="h-5 w-5" />
-          <span>Sign In</span>
-        </Link>
+        <>
+          <Link
+            href="/admin"
+            className="flex flex-col items-center gap-1 py-1 text-xs font-display font-bold text-slate-500 hover:text-amber-600"
+          >
+            <Shield className="h-5 w-5 text-amber-500" />
+            <span>Admin</span>
+          </Link>
+          <Link
+            href="/login"
+            className="flex flex-col items-center gap-1 py-1 text-xs font-display font-bold text-slate-500 hover:text-sky-600"
+          >
+            <User className="h-5 w-5" />
+            <span>Sign In</span>
+          </Link>
+        </>
       )}
     </nav>
   );

@@ -94,13 +94,22 @@ export function StudentNavbar({ userProfile }: StudentNavbarProps) {
             </>
           )}
 
-          {isAdmin && (
+          {isAdmin ? (
             <Link
               href="/admin"
               className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-slate-800 transition-colors"
             >
               <Shield className="h-3.5 w-3.5 text-amber-400" />
               <span>Admin Console</span>
+            </Link>
+          ) : (
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-300 bg-white/90 hover:bg-slate-900 hover:text-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-xs transition-colors"
+              title="Admin Portal & Fee Approvals"
+            >
+              <Shield className="h-3.5 w-3.5 text-amber-500" />
+              <span>Admin Portal</span>
             </Link>
           )}
         </nav>
@@ -134,6 +143,14 @@ export function StudentNavbar({ userProfile }: StudentNavbarProps) {
             </div>
           ) : (
             <div className="flex items-center gap-2">
+              <Link
+                href="/admin"
+                className="hidden sm:inline-flex items-center gap-1 rounded-2xl border border-amber-300 bg-amber-50/80 px-3 py-2 text-xs font-display font-bold text-amber-900 hover:bg-amber-100 transition-colors"
+                title="Admin Console"
+              >
+                <Shield className="h-3.5 w-3.5 text-amber-600" />
+                <span>Admin</span>
+              </Link>
               <Link
                 href="/login"
                 className="rounded-2xl px-4 py-2 text-xs font-display font-bold text-slate-700 hover:bg-amber-100/60 transition-colors"

@@ -15,18 +15,9 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 1. Local Demo Preview Mode
-  if (isPlaceholderConfig()) {
-    const demoUser = await getDemoUser();
-
-    if (!demoUser) {
-      redirect('/login?redirectTo=/admin');
-    }
-
-    if (demoUser.role !== 'admin') {
-      redirect('/dashboard?error=admin_access_required');
-    }
-
+  // 1. Check for Active Demo Admin Session (Fast & 100% reliable)
+  const demoUser = await getDemoUser();
+  if (demoUser && demoUser.role === 'admin') {
     const demoEnrollments = await getDemoEnrollments();
     const pendingCount = demoEnrollments.filter((e) => e.status === 'pending').length;
 
@@ -41,42 +32,62 @@ export default async function AdminLayout({
     );
   }
 
-  // 2. Live Supabase Mode
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  if (isPlaceholderConfig()) {
+    if (!demoUser) {
+      redirect('/login?redirectTo=/admin');
+    }
 
-  // Authentication check
-  if (!user) {
+    if (demoUser.role !== 'admin') {
+      redirect('/dashboard?error=admin_access_required');
+    }
+  }
+
+  // 2. Live Supabase Mode
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Authentication check
+    if (!user) {
+      redirect('/login?redirectTo=/admin');
+    }
+
+    // Strict Role Verification (Server-Side)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || profile.role !== 'admin') {
+      redirect('/dashboard?error=admin_access_required');
+    }
+
+    // Query pending fee approvals count for badge indicators
+    let pendingCount = 0;
+    try {
+      const admin = createAdminClient();
+      const { count } = await admin
+        .from('enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      pendingCount = count || 0;
+    } catch {
+      pendingCount = 0;
+    }
+
+    return (
+      <AdminLayoutShell
+        adminEmail={profile.email}
+        adminName={profile.full_name || 'Admin'}
+        pendingCount={pendingCount}
+      >
+        {children}
+      </AdminLayoutShell>
+    );
+  } catch {
     redirect('/login?redirectTo=/admin');
   }
-
-  // Strict Role Verification (Server-Side)
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'admin') {
-    redirect('/dashboard?error=admin_access_required');
-  }
-
-  // Query pending fee approvals count for badge indicators
-  const admin = createAdminClient();
-  const { count: pendingCount } = await admin
-    .from('enrollments')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'pending');
-
-  return (
-    <AdminLayoutShell
-      adminEmail={profile.email}
-      adminName={profile.full_name || 'Admin'}
-      pendingCount={pendingCount || 0}
-    >
-      {children}
-    </AdminLayoutShell>
-  );
 }
